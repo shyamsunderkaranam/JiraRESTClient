@@ -7,11 +7,16 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -23,28 +28,31 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
 
+@Service
 public class JiraRestAPIService {
 
 	private String loginId = null;
 	private String tk = null;
 	private String jira_url = "";
 	private String jql= null;
+	@Autowired
 	ConfigDAO config;
+	
 	private final String CONFIG_FILE_PATH="configs/configs.json"; 
-	private JSONArray fields_needed = null;
+	private List<String> fields_needed = null;
 	public JiraRestAPIService() {
 		// TODO Auto-generated constructor stub
 	}
 
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-post
 		//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get
 		JiraRestAPIService jiraRestAPIService = new JiraRestAPIService();
 		System.out.println( jiraRestAPIService.getProjectJqlData());
-	}
+	}*/
 	public JSONObject getProjectJqlData() {
 		
-		config = new ConfigDAO();
+		//config = new ConfigDAO();
 		JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
 		if(allConfigs != null){
 
@@ -79,7 +87,7 @@ public class JiraRestAPIService {
             }
             if(allConfigs.get("fieldsNeeded")!=null) {
                 //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
-            	fields_needed = new JSONArray(Arrays.asList(allConfigs.get("fieldsNeeded").toString().split(","))) ;
+            	fields_needed = new ArrayList<>(Arrays.asList(allConfigs.get("fieldsNeeded").toString().split(","))) ;
             	
             	System.out.println("fieldsNeeded are:  "+fields_needed);
                 
@@ -252,17 +260,18 @@ public class JiraRestAPIService {
 			});
 
 			
-			HttpResponse<String> response = Unirest.post(jira_url)
+			HttpResponse<JsonNode> response = Unirest.post(jira_url)
 			  .basicAuth(loginId, tk)
 			  .header("Accept", "application/json")
 			  .header("Content-Type", "application/json")
 			  .body(payload)
-			  .asString();
+			  .asJson();
 
 			
 			System.out.println("Response is ");
 			System.out.println(response.getBody());
-			 resp = new JSONObject(response.getBody());
+			JSONParser parser=new JSONParser(); 
+			 resp = (JSONObject) parser.parse(response.getBody().toString());
 			 return resp;
 			
 		}

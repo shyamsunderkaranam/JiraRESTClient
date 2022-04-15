@@ -2,17 +2,12 @@ package com.jira.jirarestclient.controllers;
 
 import com.jira.jirarestclient.service.*;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-
 
 @RestController
 public class JiraToolsController {
@@ -29,9 +24,9 @@ public class JiraToolsController {
 
 	@CrossOrigin(allowedHeaders = "Access-Control-Allow-Origin")
 	@RequestMapping(value = {"/ticketsProjectWise"}, method = RequestMethod.GET)
-	public ResponseEntity<JSONArray> getProjectJqlData() {
+	public ResponseEntity<JSONObject> getProjectJqlData() {
 		
-		JSONArray tempList=  jiraRestAPIService.getProjectJqlData();
+		JSONObject tempList=  jiraRestAPIService.getProjectJqlData();
 		
 		return ResponseEntity.ok(tempList);
 	}

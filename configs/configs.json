@@ -2,7 +2,7 @@
 	"jira_url":"https://demositetemporary.atlassian.net/rest/api/3/search",
 	"jqlForProjects":"project = doublequoteFIRSTdoublequote",
 	"jira_user":"Testatlassian1@mailinator.com",
-	"dont_tell":"GLUsdKCx9TZBJr8ISrtP9D2C",
+	"dont_tell":"VdC8jd0Dj7VL0Jh8Qbz72A5B",
 	"fieldsNeeded":"key,created,summary,updated,status,customfield_10030,customfield_10029,customfield_10031"
 	
 }

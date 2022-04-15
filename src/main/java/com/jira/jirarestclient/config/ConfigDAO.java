@@ -7,17 +7,11 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
-import java.util.Map;
 
-import org.apache.tomcat.util.json.JSONParser;
-import org.apache.tomcat.util.json.ParseException;
-import org.json.JSONArray;
-import org.json.JSONObject;
-/*import org.json.simple.JSONArray;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;*/
+import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -71,14 +65,13 @@ public class ConfigDAO {
 
 	public JSONArray getConfigData(String configFilePath) {
 
+		JSONParser jsonParser = new JSONParser();
 		JSONArray ja=null;
 		Object obj = null;
-		try
+		try (FileReader reader = new FileReader(configFilePath))
         {
-		JSONParser jsonParser = new JSONParser(new FileReader(configFilePath));
-		
             //Read JSON file
-			obj =  jsonParser.parse();
+			obj =  jsonParser.parse(reader);;
 			ja= (JSONArray)obj;
             
         } catch (FileNotFoundException e) {
@@ -89,7 +82,7 @@ public class ConfigDAO {
             e.printStackTrace();
         } catch (ClassCastException e) {
         	ja = new JSONArray();
-        	ja.put( obj);
+        	ja.add( obj);
         } catch (Exception e) {
         	 e.printStackTrace();
         }
@@ -98,14 +91,12 @@ public class ConfigDAO {
 	}
 	public JSONObject getJSONData(String configFilePath) {
 
+		JSONParser jsonParser = new JSONParser();
 		JSONObject ja=null;
-		Map<String,String> tmp=null;
-		try {
-			FileReader reader = new FileReader(configFilePath);
-			JSONParser jsonParser = new JSONParser(reader);
-		    //Read JSON file
-			tmp= (HashMap) jsonParser.parse();
-			ja = new JSONObject(tmp);
+		try (FileReader reader = new FileReader(configFilePath))
+        {
+            //Read JSON file
+			ja= (JSONObject) jsonParser.parse(reader);
             
         } catch (FileNotFoundException e) {
             e.printStackTrace();
