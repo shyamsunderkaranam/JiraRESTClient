@@ -27,6 +27,8 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import com.mashape.unirest.request.body.RequestBodyEntity;
 
 @Service
 public class JiraRestAPIService {
@@ -35,7 +37,7 @@ public class JiraRestAPIService {
 	private String tk = null;
 	private String jira_url = "";
 	private String jql= null;
-	@Autowired
+	
 	ConfigDAO config;
 	
 	private final String CONFIG_FILE_PATH="configs/configs.json"; 
@@ -52,7 +54,7 @@ public class JiraRestAPIService {
 	}*/
 	public JSONObject getProjectJqlData() {
 		
-		//config = new ConfigDAO();
+		config = new ConfigDAO();
 		JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
 		if(allConfigs != null){
 
@@ -93,7 +95,10 @@ public class JiraRestAPIService {
                 
             }
 		}
-		return testMethod4();
+		
+			return testMethod4();
+		
+		
 		
 	}
 	public static void testMethod1() {
@@ -198,7 +203,7 @@ public class JiraRestAPIService {
 
 			
 
-			System.out.println(response.getBody());
+			System.out.println(response.getBody().toString());
 		}
 		catch(Exception e) {
 			System.out.println("ERROR OCCURED");
@@ -206,8 +211,9 @@ public class JiraRestAPIService {
 		}
 		}
 	
-	public  JSONObject testMethod4() {
+	public  JSONObject testMethod4(){
 		JSONObject resp=null;
+		RequestBodyEntity requestBodyEntity = null;
 		try {
 			// The payload definition using the Jackson library
 			JsonNodeFactory jnf = JsonNodeFactory.instance;
@@ -219,7 +225,7 @@ public class JiraRestAPIService {
 			  //expand.add("operations");
 			  payload.put("jql", jql);
 			  payload.put("maxResults", 1000);
-			  payload.put("fieldsByKeys", false);
+			  //payload.put("fieldsByKeys", false);
 			  ArrayNode fields = payload.putArray("fields");
 			  fields_needed
 			  .forEach(fieldNeeded ->{
@@ -260,12 +266,15 @@ public class JiraRestAPIService {
 			});
 
 			
-			HttpResponse<JsonNode> response = Unirest.post(jira_url)
-			  .basicAuth(loginId, tk)
-			  .header("Accept", "application/json")
-			  .header("Content-Type", "application/json")
-			  .body(payload)
-			  .asJson();
+			requestBodyEntity = Unirest.post(jira_url)
+				  //.basicAuth(loginId, tk)
+				  .header("Authorization", "Bearer "+tk)
+				  .header("Accept", "application/json")
+				  .header("Content-Type", "application/json")
+				  .body(payload) ;
+			  System.out.println(requestBodyEntity.asString().getBody());
+			  HttpResponse<JsonNode> response = requestBodyEntity
+					  							.asJson();
 
 			
 			System.out.println("Response is ");
@@ -275,9 +284,25 @@ public class JiraRestAPIService {
 			 return resp;
 			
 		}
+		catch(UnirestException e) {
+			System.out.println("ERROR OCCURED");
+			try {
+				System.out.println(requestBodyEntity.asString().getBody());
+			} catch (UnirestException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			e.printStackTrace();
+			return resp;
+		}
 		catch(Exception e) {
 			System.out.println("ERROR OCCURED");
-			
+			try {
+				System.out.println(requestBodyEntity.asString().getBody());
+			} catch (UnirestException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 			e.printStackTrace();
 			return resp;
 		}
