@@ -2,6 +2,8 @@ package com.jira.jirarestclient.controllers;
 
 import com.jira.jirarestclient.service.*;
 
+import java.util.List;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +26,9 @@ public class JiraToolsController {
 
 	@CrossOrigin(allowedHeaders = "Access-Control-Allow-Origin")
 	@RequestMapping(value = {"/ticketsProjectWise"}, method = RequestMethod.GET)
-	public ResponseEntity<JSONObject> getProjectJqlData() {
+	public ResponseEntity<List<JSONObject>> getProjectJqlData() {
 		
-		JSONObject tempList=  jiraRestAPIService.getProjectJqlData();
+		List<JSONObject> tempList=  jiraRestAPIService.getProjectJqlData();
 		
 		return ResponseEntity.ok(tempList);
 	}

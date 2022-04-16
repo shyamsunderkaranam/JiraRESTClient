@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -52,7 +55,7 @@ public class JiraRestAPIService {
 		JiraRestAPIService jiraRestAPIService = new JiraRestAPIService();
 		System.out.println( jiraRestAPIService.getProjectJqlData());
 	}*/
-	public JSONObject getProjectJqlData() {
+	public List<JSONObject> getProjectJqlData() {
 		
 		config = new ConfigDAO();
 		JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
@@ -96,11 +99,126 @@ public class JiraRestAPIService {
             }
 		}
 		
-			return testMethod4();
+		JSONObject results1 = jiraConnector();
+		List<JSONObject> issues = (ArrayList<JSONObject>)(results1.get("issues"));
+		
+		List<JSONObject> finalResult = issues.stream()
+		.map(issue -> {
+			JSONObject tmp = new JSONObject();
+			tmp.put("key", issue.get("key"));
+			tmp.put("summary", ((JSONObject)issue.get("fields")).get("summary"));
+			tmp.put("created", ((JSONObject)issue.get("fields")).get("created"));
+			tmp.put("updated", ((JSONObject)issue.get("fields")).get("updated"));
+			tmp.put("status", ((JSONObject)((JSONObject)issue.get("fields")).get("status")).get("name"));
+			tmp.put("project_team", ((JSONObject)((JSONObject)issue.get("fields")).get("customfield_12903")).get("value"));
+			
+			List<String> tiers = ((List<JSONObject>)((JSONObject)issue.get("fields")).get("customfield_15021")).stream()
+			.map(tier -> {
+				return tier.get("value").toString();
+			})
+			.collect(Collectors.toList());
+			
+			tmp.put("Tier", String.join(",",tiers ));
+			
+			//tmp.put("Resolved", ((JSONObject)issue.get("fields")).get("customfield_10031"));
+			return tmp;
+		})
+		.collect(Collectors.toList());
 		
 		
-		
+			return finalResult;
 	}
+
+	public  JSONObject jiraConnector(){
+		JSONObject resp=null;
+		RequestBodyEntity requestBodyEntity = null;
+		try {
+			// The payload definition using the Jackson library
+			JsonNodeFactory jnf = JsonNodeFactory.instance;
+			ObjectNode payload = jnf.objectNode();
+			{
+			  /*ArrayNode expand = payload.putArray("expand");
+			  expand.add("names");
+			  expand.add("schema");*/
+			  //expand.add("operations");
+			  payload.put("jql", jql);
+			  payload.put("maxResults", 1000);
+			  //payload.put("fieldsByKeys", false);
+			  ArrayNode fields = payload.putArray("fields");
+			  fields_needed
+			  .forEach(fieldNeeded ->{
+				  fields.add(fieldNeeded.toString());
+			  });
+			  
+			  payload.put("startAt", 0);
+			}
+
+			// Connect Jackson ObjectMapper to Unirest
+			Unirest.setObjectMapper(new ObjectMapper() {
+			   private com.fasterxml.jackson.databind.ObjectMapper jacksonObjectMapper
+			           = new com.fasterxml.jackson.databind.ObjectMapper();
+
+			   public <T> T readValue(String value, Class<T> valueType) {
+			       try {
+			           return jacksonObjectMapper.readValue(value, valueType);
+			       } catch (IOException e) {
+			           throw new RuntimeException(e);
+			       }
+			   }
+
+			   public String writeValue(Object value) {
+			       try {
+			           return jacksonObjectMapper.writeValueAsString(value);
+			       } catch (JsonProcessingException e) {
+			           throw new RuntimeException(e);
+			       }
+			   }
+			});
+
+			
+			requestBodyEntity = Unirest.post(jira_url)
+				  //.basicAuth(loginId, tk)
+				  .header("Authorization", "Bearer "+tk)
+				  .header("Accept", "application/json")
+				  .header("Content-Type", "application/json")
+				  .body(payload) ;
+			  System.out.println(requestBodyEntity.asString().getBody());
+			  HttpResponse<JsonNode> response = requestBodyEntity
+					  							.asJson();
+
+			
+			System.out.println("Response is ");
+			System.out.println(response.getBody());
+			JSONParser parser=new JSONParser(); 
+			 resp = (JSONObject) parser.parse(response.getBody().toString());
+			 return resp;
+			
+		}
+		catch(UnirestException e) {
+			System.out.println("ERROR OCCURED");
+			try {
+				System.out.println(requestBodyEntity.asString().getBody());
+			} catch (UnirestException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			e.printStackTrace();
+			return resp;
+		}
+		catch(Exception e) {
+			System.out.println("ERROR OCCURED");
+			try {
+				System.out.println(requestBodyEntity.asString().getBody());
+			} catch (UnirestException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			e.printStackTrace();
+			return resp;
+		}
+		
+		}
+	
 	public static void testMethod1() {
 		// TODO Auto-generated method stub
 		try {
@@ -211,101 +329,4 @@ public class JiraRestAPIService {
 		}
 		}
 	
-	public  JSONObject testMethod4(){
-		JSONObject resp=null;
-		RequestBodyEntity requestBodyEntity = null;
-		try {
-			// The payload definition using the Jackson library
-			JsonNodeFactory jnf = JsonNodeFactory.instance;
-			ObjectNode payload = jnf.objectNode();
-			{
-			  /*ArrayNode expand = payload.putArray("expand");
-			  expand.add("names");
-			  expand.add("schema");*/
-			  //expand.add("operations");
-			  payload.put("jql", jql);
-			  payload.put("maxResults", 1000);
-			  //payload.put("fieldsByKeys", false);
-			  ArrayNode fields = payload.putArray("fields");
-			  fields_needed
-			  .forEach(fieldNeeded ->{
-				  fields.add(fieldNeeded.toString());
-			  });
-			  /*fields.add("key");
-			  fields.add("created");
-			  fields.add("summary");
-			  fields.add("updated");
-			  fields.add("status");
-			  fields.add("customfield_10030");
-			  fields.add("customfield_10029");
-			  fields.add("customfield_10031");*/
-			  
-			  payload.put("startAt", 0);
-			}
-
-			// Connect Jackson ObjectMapper to Unirest
-			Unirest.setObjectMapper(new ObjectMapper() {
-			   private com.fasterxml.jackson.databind.ObjectMapper jacksonObjectMapper
-			           = new com.fasterxml.jackson.databind.ObjectMapper();
-
-			   public <T> T readValue(String value, Class<T> valueType) {
-			       try {
-			           return jacksonObjectMapper.readValue(value, valueType);
-			       } catch (IOException e) {
-			           throw new RuntimeException(e);
-			       }
-			   }
-
-			   public String writeValue(Object value) {
-			       try {
-			           return jacksonObjectMapper.writeValueAsString(value);
-			       } catch (JsonProcessingException e) {
-			           throw new RuntimeException(e);
-			       }
-			   }
-			});
-
-			
-			requestBodyEntity = Unirest.post(jira_url)
-				  //.basicAuth(loginId, tk)
-				  .header("Authorization", "Bearer "+tk)
-				  .header("Accept", "application/json")
-				  .header("Content-Type", "application/json")
-				  .body(payload) ;
-			  System.out.println(requestBodyEntity.asString().getBody());
-			  HttpResponse<JsonNode> response = requestBodyEntity
-					  							.asJson();
-
-			
-			System.out.println("Response is ");
-			System.out.println(response.getBody());
-			JSONParser parser=new JSONParser(); 
-			 resp = (JSONObject) parser.parse(response.getBody().toString());
-			 return resp;
-			
-		}
-		catch(UnirestException e) {
-			System.out.println("ERROR OCCURED");
-			try {
-				System.out.println(requestBodyEntity.asString().getBody());
-			} catch (UnirestException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			e.printStackTrace();
-			return resp;
-		}
-		catch(Exception e) {
-			System.out.println("ERROR OCCURED");
-			try {
-				System.out.println(requestBodyEntity.asString().getBody());
-			} catch (UnirestException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			e.printStackTrace();
-			return resp;
-		}
-		
-		}
 }
