@@ -56,80 +56,107 @@ public class JiraRestAPIService {
 		System.out.println( jiraRestAPIService.getProjectJqlData());
 	}*/
 	public List<JSONObject> getProjectJqlData() {
-		
-		config = new ConfigDAO();
-		JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
-		if(allConfigs != null){
+		List<JSONObject> finalResult = new ArrayList<JSONObject>();
+        try{
+            config = new ConfigDAO();
+            JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
+            if(allConfigs != null){
 
-            //logger.info("Found configurations");
-            if(allConfigs.get("jira_url")!=null) {
-                //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
-            	jira_url = allConfigs.get("jira_url").toString();
-            	System.out.println(jira_url);
-                
+                //logger.info("Found configurations");
+                if(allConfigs.get("jira_url")!=null) {
+                    //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
+                    jira_url = allConfigs.get("jira_url").toString();
+                    System.out.println(jira_url);
+                    
+                }
+                if(allConfigs.get("jira_user")!=null) {
+                    //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
+                    loginId = allConfigs.get("jira_user").toString();
+                    //System.out.println(loginId);
+                    
+                }
+                if(allConfigs.get("dont_tell")!=null) {
+                    //GLUsdKCx9TZBJr8ISrtP9D2C
+                    //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
+                    tk = allConfigs.get("dont_tell").toString();
+                    //System.out.println(tk);
+                    
+                }
+                if(allConfigs.get("jqlForProjects")!=null) {
+                    //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
+                    jql = allConfigs.get("jqlForProjects").toString();
+                    //jql = jql.replace("doublequote", "\"");
+                    //jql="project = \"FIRST\"";
+                    jql = jql.replace("doublequote", "\"");
+                    System.out.println("JQL is: "+jql);
+                    
+                }
+                if(allConfigs.get("fieldsNeeded")!=null) {
+                    //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
+                    fields_needed = new ArrayList<>(Arrays.asList(allConfigs.get("fieldsNeeded").toString().split(","))) ;
+                    
+                    System.out.println("fieldsNeeded are:  "+fields_needed);
+                    
+                }
             }
-            if(allConfigs.get("jira_user")!=null) {
-                //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
-            	loginId = allConfigs.get("jira_user").toString();
-            	System.out.println(loginId);
+        }
+        catch(Exception e){
+            JSONObject tmp = new JSONObject();
+            tmp.put("ERROR","ERROR in getting the configuration");
+            tmp.put("ERROR_DETAILS",e.getStackTrace().toString());
+            finalResult.add(tmp);
+        }
+		
+		JSONObject results1 = new JSONObject();
+        try{
+            results1 = jiraConnector();
+        }
+        catch(Exception e){
+            JSONObject tmp = new JSONObject();
+            tmp.put("ERROR","ERROR in fetching Jira Data");
+            tmp.put("ERROR_DETAILS",e.getStackTrace().toString());
+            finalResult.add(tmp);
+        }
+		
+        try{
+		
+            List<JSONObject> issues = (ArrayList<JSONObject>)(results1.get("issues"));
+            finalResult = issues.stream()
+            .map(issue -> {
+                JSONObject tmp = new JSONObject();
+                tmp.put("key", issue.get("key"));
+                tmp.put("summary", ((JSONObject)issue.get("fields")).get("summary"));
+                tmp.put("created", ((JSONObject)issue.get("fields")).get("created"));
+                tmp.put("updated", ((JSONObject)issue.get("fields")).get("updated"));
+                tmp.put("status", ((JSONObject)((JSONObject)issue.get("fields")).get("status")).get("name"));
+                tmp.put("project_team", ((JSONObject)((JSONObject)issue.get("fields")).get("customfield_12903")).get("value"));
                 
-            }
-            if(allConfigs.get("dont_tell")!=null) {
-            	//GLUsdKCx9TZBJr8ISrtP9D2C
-                //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
-            	tk = allConfigs.get("dont_tell").toString();
-            	System.out.println(tk);
+                String reolve_date =  (((JSONObject)issue.get("fields")).get("resolutiondate")!=null)?((JSONObject)issue.get("fields")).get("resolutiondate").toString():"Unresolved";
+                tmp.put("resolution_date",reolve_date);
+                List<JSONObject> tmp1 = ((List<JSONObject>)((JSONObject)issue.get("fields")).get("customfield_15201"));
                 
-            }
-            if(allConfigs.get("jqlForProjects")!=null) {
-                //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
-            	jql = allConfigs.get("jqlForProjects").toString();
-            	//jql = jql.replace("doublequote", "\"");
-            	//jql="project = \"FIRST\"";
-            	jql = jql.replace("doublequote", "\"");
-            	System.out.println("JQL is: "+jql);
+                List<String> tiers = tmp1.stream()
+                .map(tier -> {
+                    return tier.get("value").toString();
+                })
+            
+                .collect(Collectors.toList());
                 
-            }
-            if(allConfigs.get("fieldsNeeded")!=null) {
-                //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
-            	fields_needed = new ArrayList<>(Arrays.asList(allConfigs.get("fieldsNeeded").toString().split(","))) ;
-            	
-            	System.out.println("fieldsNeeded are:  "+fields_needed);
-                
-            }
+                tmp.put("Tier", String.join(",",tiers ));
+                return tmp;
+            
+            })
+            .collect(Collectors.toList());
 		}
+        catch(Exception e){
+            JSONObject tmp = new JSONObject();
+            tmp.put("ERROR","ERROR in Mapping Result");
+            tmp.put("ERROR_DETAILS",e.getStackTrace().toString());
+            finalResult.add(tmp);
+        }
+        
 		
-		JSONObject results1 = jiraConnector();
-		List<JSONObject> issues = (ArrayList<JSONObject>)(results1.get("issues"));
-		
-		List<JSONObject> finalResult = issues.stream()
-		.map(issue -> {
-			JSONObject tmp = new JSONObject();
-			tmp.put("key", issue.get("key"));
-			tmp.put("summary", ((JSONObject)issue.get("fields")).get("summary"));
-			tmp.put("created", ((JSONObject)issue.get("fields")).get("created"));
-			tmp.put("updated", ((JSONObject)issue.get("fields")).get("updated"));
-			tmp.put("status", ((JSONObject)((JSONObject)issue.get("fields")).get("status")).get("name"));
-			tmp.put("project_team", ((JSONObject)((JSONObject)issue.get("fields")).get("customfield_12903")).get("value"));
-			
-			String reolve_date =  (((JSONObject)issue.get("fields")).get("resolutiondate")!=null)?((JSONObject)issue.get("fields")).get("resolutiondate").toString():"Unresolved";
-			tmp.put("resolution_date",reolve_date);
-			List<JSONObject> tmp1 = ((List<JSONObject>)((JSONObject)issue.get("fields")).get("customfield_15201"));
-			
-			List<String> tiers = tmp1.stream()
-			.map(tier -> {
-				return tier.get("value").toString();
-			})
-		
-			.collect(Collectors.toList());
-			
-			tmp.put("Tier", String.join(",",tiers ));
-			return tmp;
-		})
-		.collect(Collectors.toList());
-		
-		
-			return finalResult;
+		return finalResult;
 	}
 
 	public  JSONObject jiraConnector(){
@@ -185,15 +212,16 @@ public class JiraRestAPIService {
 				  .header("Accept", "application/json")
 				  .header("Content-Type", "application/json")
 				  .body(payload) ;
-			  System.out.println(requestBodyEntity.asString().getBody());
+			  //System.out.println(requestBodyEntity.asString().getBody());
 			  HttpResponse<JsonNode> response = requestBodyEntity
 					  							.asJson();
 
 			
-			System.out.println("Response is ");
-			System.out.println(response.getBody());
+			/*System.out.println("Response is ");
+			System.out.println(response.getBody());*/
 			JSONParser parser=new JSONParser(); 
 			 resp = (JSONObject) parser.parse(response.getBody().toString());
+             System.out.println("Response is OK");
 			 return resp;
 			
 		}
