@@ -112,15 +112,18 @@ public class JiraRestAPIService {
 			tmp.put("status", ((JSONObject)((JSONObject)issue.get("fields")).get("status")).get("name"));
 			tmp.put("project_team", ((JSONObject)((JSONObject)issue.get("fields")).get("customfield_12903")).get("value"));
 			
-			List<String> tiers = ((List<JSONObject>)((JSONObject)issue.get("fields")).get("customfield_15021")).stream()
+			String reolve_date =  (((JSONObject)issue.get("fields")).get("resolutiondate")!=null)?((JSONObject)issue.get("fields")).get("resolutiondate").toString():"Unresolved";
+			tmp.put("resolution_date",reolve_date);
+			List<JSONObject> tmp1 = ((List<JSONObject>)((JSONObject)issue.get("fields")).get("customfield_15201"));
+			
+			List<String> tiers = tmp1.stream()
 			.map(tier -> {
 				return tier.get("value").toString();
 			})
+		
 			.collect(Collectors.toList());
 			
 			tmp.put("Tier", String.join(",",tiers ));
-			
-			//tmp.put("Resolved", ((JSONObject)issue.get("fields")).get("customfield_10031"));
 			return tmp;
 		})
 		.collect(Collectors.toList());
