@@ -110,6 +110,7 @@ public class JiraRestAPIService {
 		JSONObject results1 = new JSONObject();
         try{
             results1 = jiraConnector();
+            //finalResult.add(results1);
         }
         catch(Exception e){
             JSONObject tmp = new JSONObject();
@@ -160,7 +161,7 @@ public class JiraRestAPIService {
 	}
 
 	public  JSONObject jiraConnector(){
-		JSONObject resp=null;
+		JSONObject resp=new JSONObject();
 		RequestBodyEntity requestBodyEntity = null;
 		try {
 			// The payload definition using the Jackson library
@@ -205,7 +206,8 @@ public class JiraRestAPIService {
 			   }
 			});
 
-			
+            int totalissues=1000;
+			for (int i=0; i<=totalissues; i++){
 			requestBodyEntity = Unirest.post(jira_url)
 				  //.basicAuth(loginId, tk)
 				  .header("Authorization", "Bearer "+tk)
@@ -220,8 +222,25 @@ public class JiraRestAPIService {
 			/*System.out.println("Response is ");
 			System.out.println(response.getBody());*/
 			JSONParser parser=new JSONParser(); 
-			 resp = (JSONObject) parser.parse(response.getBody().toString());
+			 JSONObject temp = (JSONObject) parser.parse(response.getBody().toString());
+             
+             if(i==0) {resp.putAll(temp);
+            }
+            else if(!resp.isEmpty()){
+                List<JSONObject> tempIssues1 = (ArrayList<JSONObject>)(temp.get("issues"));
+                List<JSONObject> tempIssues2 = (ArrayList<JSONObject>)(resp.get("issues"));
+                tempIssues2.addAll(tempIssues1);
+                resp.put("issues", tempIssues2);
+
+            }
+             
              System.out.println("Response is OK");
+             i += Integer.parseInt(temp.get("maxResults").toString());
+             totalissues = Integer.parseInt(temp.get("total").toString());
+             System.out.println("Index is "+i);
+             System.out.println("Total issues are "+totalissues);
+             payload.put("startAt", i);
+            }
 			 return resp;
 			
 		}
