@@ -40,6 +40,7 @@ public class JiraRestAPIService {
 	private String tk = null;
 	private String jira_url = "";
 	private String jql= null;
+    private int maxResults=1000;
 	
 	ConfigDAO config;
 	
@@ -57,6 +58,7 @@ public class JiraRestAPIService {
 	}*/
 	public List<JSONObject> getProjectJqlData() {
 		List<JSONObject> finalResult = new ArrayList<JSONObject>();
+        String formatOutput = "N";
         try{
             config = new ConfigDAO();
             JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
@@ -98,6 +100,20 @@ public class JiraRestAPIService {
                     System.out.println("fieldsNeeded are:  "+fields_needed);
                     
                 }
+                if(allConfigs.get("maxResults")!=null) {
+                    //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
+                    maxResults = Integer.parseInt(allConfigs.get("maxResults").toString()) ;
+                    
+                    System.out.println("maxResults is:  "+maxResults);
+                    
+                }
+                if(allConfigs.get("formatOutput")!=null) {
+                    //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
+                    formatOutput = allConfigs.get("formatOutput").toString() ;
+                    
+                    System.out.println("formatOutput is:  "+formatOutput);
+                    
+                }
             }
         }
         catch(Exception e){
@@ -121,33 +137,38 @@ public class JiraRestAPIService {
 		
         try{
 		
-            List<JSONObject> issues = (ArrayList<JSONObject>)(results1.get("issues"));
-            finalResult = issues.stream()
-            .map(issue -> {
-                JSONObject tmp = new JSONObject();
-                tmp.put("key", issue.get("key"));
-                tmp.put("summary", ((JSONObject)issue.get("fields")).get("summary"));
-                tmp.put("created", ((JSONObject)issue.get("fields")).get("created"));
-                tmp.put("updated", ((JSONObject)issue.get("fields")).get("updated"));
-                tmp.put("status", ((JSONObject)((JSONObject)issue.get("fields")).get("status")).get("name"));
-                tmp.put("project_team", ((JSONObject)((JSONObject)issue.get("fields")).get("customfield_12903")).get("value"));
+            if(formatOutput.equalsIgnoreCase("Y")){
+                List<JSONObject> issues = (ArrayList<JSONObject>)(results1.get("issues"));
+                finalResult = issues.stream()
+                .map(issue -> {
+                    JSONObject tmp = new JSONObject();
+                    tmp.put("key", issue.get("key"));
+                    tmp.put("summary", ((JSONObject)issue.get("fields")).get("summary"));
+                    tmp.put("created", ((JSONObject)issue.get("fields")).get("created"));
+                    tmp.put("updated", ((JSONObject)issue.get("fields")).get("updated"));
+                    tmp.put("status", ((JSONObject)((JSONObject)issue.get("fields")).get("status")).get("name"));
+                    tmp.put("project_team", ((JSONObject)((JSONObject)issue.get("fields")).get("customfield_12903")).get("value"));
+                    
+                    String reolve_date =  (((JSONObject)issue.get("fields")).get("resolutiondate")!=null)?((JSONObject)issue.get("fields")).get("resolutiondate").toString():"Unresolved";
+                    tmp.put("resolution_date",reolve_date);
+                    List<JSONObject> tmp1 = ((List<JSONObject>)((JSONObject)issue.get("fields")).get("customfield_15201"));
+                    
+                    List<String> tiers = tmp1.stream()
+                    .map(tier -> {
+                        return tier.get("value").toString();
+                    })
                 
-                String reolve_date =  (((JSONObject)issue.get("fields")).get("resolutiondate")!=null)?((JSONObject)issue.get("fields")).get("resolutiondate").toString():"Unresolved";
-                tmp.put("resolution_date",reolve_date);
-                List<JSONObject> tmp1 = ((List<JSONObject>)((JSONObject)issue.get("fields")).get("customfield_15201"));
+                    .collect(Collectors.toList());
+                    
+                    tmp.put("Tier", String.join(",",tiers ));
+                    return tmp;
                 
-                List<String> tiers = tmp1.stream()
-                .map(tier -> {
-                    return tier.get("value").toString();
                 })
-            
                 .collect(Collectors.toList());
-                
-                tmp.put("Tier", String.join(",",tiers ));
-                return tmp;
-            
-            })
-            .collect(Collectors.toList());
+            }
+            else{
+                finalResult.add(results1);
+            }
 		}
         catch(Exception e){
             JSONObject tmp = new JSONObject();
@@ -173,7 +194,7 @@ public class JiraRestAPIService {
 			  expand.add("schema");*/
 			  //expand.add("operations");
 			  payload.put("jql", jql);
-			  payload.put("maxResults", 1000);
+			  payload.put("maxResults", maxResults);
 			  //payload.put("fieldsByKeys", false);
 			  ArrayNode fields = payload.putArray("fields");
 			  fields_needed
@@ -224,7 +245,8 @@ public class JiraRestAPIService {
 			JSONParser parser=new JSONParser(); 
 			 JSONObject temp = (JSONObject) parser.parse(response.getBody().toString());
              
-             if(i==0) {resp.putAll(temp);
+             if(i==0) {
+                 resp.putAll(temp);
             }
             else if(!resp.isEmpty()){
                 List<JSONObject> tempIssues1 = (ArrayList<JSONObject>)(temp.get("issues"));
@@ -239,6 +261,7 @@ public class JiraRestAPIService {
              totalissues = Integer.parseInt(temp.get("total").toString());
              System.out.println("Index is "+i);
              System.out.println("Total issues are "+totalissues);
+             System.out.println("maxResults are "+maxResults);
              payload.put("startAt", i);
             }
 			 return resp;
