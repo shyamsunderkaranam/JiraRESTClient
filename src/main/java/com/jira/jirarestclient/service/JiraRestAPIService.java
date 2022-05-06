@@ -1,24 +1,14 @@
 package com.jira.jirarestclient.service;
 
-import java.io.BufferedReader;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -32,6 +22,8 @@ import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import com.mashape.unirest.request.body.RequestBodyEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class JiraRestAPIService {
@@ -44,6 +36,8 @@ public class JiraRestAPIService {
 	
 	ConfigDAO config;
 	
+    Logger logger = LoggerFactory.getLogger(JiraRestAPIService.class);
+
 	private final String CONFIG_FILE_PATH="configs/configs.json"; 
 	private List<String> fields_needed = null;
 	public JiraRestAPIService() {
@@ -54,34 +48,36 @@ public class JiraRestAPIService {
 		//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-post
 		//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-get
 		JiraRestAPIService jiraRestAPIService = new JiraRestAPIService();
-		System.out.println( jiraRestAPIService.getProjectJqlData());
+		logger.info( jiraRestAPIService.getProjectJqlData());
 	}*/
 	public List<JSONObject> getProjectJqlData() {
 		List<JSONObject> finalResult = new ArrayList<JSONObject>();
         String formatOutput = "N";
         try{
             config = new ConfigDAO();
-            JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
+            //JSONObject allConfigs = config.getJSONData(CONFIG_FILE_PATH);
+            JSONObject allConfigs = config.getAllConfigs();
+            //logger.info("ALL Configurations are "+allConfigs);
             if(allConfigs != null){
 
                 //logger.info("Found configurations");
                 if(allConfigs.get("jira_url")!=null) {
                     //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
                     jira_url = allConfigs.get("jira_url").toString();
-                    System.out.println(jira_url);
+                    logger.info(jira_url);
                     
                 }
                 if(allConfigs.get("jira_user")!=null) {
                     //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
                     loginId = allConfigs.get("jira_user").toString();
-                    //System.out.println(loginId);
+                    //logger.info(loginId);
                     
                 }
                 if(allConfigs.get("dont_tell")!=null) {
                     //GLUsdKCx9TZBJr8ISrtP9D2C
                     //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
                     tk = allConfigs.get("dont_tell").toString();
-                    //System.out.println(tk);
+                    //logger.info(tk);
                     
                 }
                 if(allConfigs.get("jqlForProjects")!=null) {
@@ -90,28 +86,28 @@ public class JiraRestAPIService {
                     //jql = jql.replace("doublequote", "\"");
                     //jql="project = \"FIRST\"";
                     jql = jql.replace("doublequote", "\"");
-                    System.out.println("JQL is: "+jql);
+                    logger.info("JQL is: "+jql);
                     
                 }
                 if(allConfigs.get("fieldsNeeded")!=null) {
                     //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
                     fields_needed = new ArrayList<>(Arrays.asList(allConfigs.get("fieldsNeeded").toString().split(","))) ;
                     
-                    System.out.println("fieldsNeeded are:  "+fields_needed);
+                    logger.info("fieldsNeeded are:  "+fields_needed);
                     
                 }
                 if(allConfigs.get("maxResults")!=null) {
                     //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
                     maxResults = Integer.parseInt(allConfigs.get("maxResults").toString()) ;
                     
-                    System.out.println("maxResults is:  "+maxResults);
+                    logger.info("maxResults is:  "+maxResults);
                     
                 }
                 if(allConfigs.get("formatOutput")!=null) {
                     //logger.info("products Configures are "+allConfigs.get("SITBQUKProductsToFix"));
                     formatOutput = allConfigs.get("formatOutput").toString() ;
                     
-                    System.out.println("formatOutput is:  "+formatOutput);
+                    logger.info("formatOutput is:  "+formatOutput);
                     
                 }
             }
@@ -119,25 +115,32 @@ public class JiraRestAPIService {
         catch(Exception e){
             JSONObject tmp = new JSONObject();
             tmp.put("ERROR","ERROR in getting the configuration");
-            tmp.put("ERROR_DETAILS",e.getStackTrace().toString());
+            tmp.put("ERROR_DETAILS",e.getMessage().toString());
             finalResult.add(tmp);
+            e.printStackTrace();
+            return finalResult;
         }
 		
 		JSONObject results1 = new JSONObject();
         try{
             results1 = jiraConnector();
+            //logger.info(results1.toString());
             //finalResult.add(results1);
         }
         catch(Exception e){
             JSONObject tmp = new JSONObject();
             tmp.put("ERROR","ERROR in fetching Jira Data");
-            tmp.put("ERROR_DETAILS",e.getStackTrace().toString());
+            tmp.put("ERROR_DETAILS",e.getMessage().toString());
             finalResult.add(tmp);
+            e.printStackTrace();
+            return finalResult;
         }
 		
         try{
 		
+            
             if(formatOutput.equalsIgnoreCase("Y")){
+                logger.info("Formatting the results now");
                 List<JSONObject> issues = (ArrayList<JSONObject>)(results1.get("issues"));
                 finalResult = issues.stream()
                 .map(issue -> {
@@ -167,14 +170,18 @@ public class JiraRestAPIService {
                 .collect(Collectors.toList());
             }
             else{
+                logger.info("Not Formatting the results");
                 finalResult.add(results1);
             }
 		}
         catch(Exception e){
             JSONObject tmp = new JSONObject();
             tmp.put("ERROR","ERROR in Mapping Result");
-            tmp.put("ERROR_DETAILS",e.getStackTrace().toString());
+            tmp.put("ACTUAL_RESULT",results1);
+            tmp.put("ERROR_DETAILS",e.getMessage().toString());
             finalResult.add(tmp);
+            logger.error("Issue in formatting the result");
+            e.printStackTrace();
         }
         
 		
@@ -183,6 +190,7 @@ public class JiraRestAPIService {
 
 	public  JSONObject jiraConnector(){
 		JSONObject resp=new JSONObject();
+        logger.info("Connecting to Jira now ");
 		RequestBodyEntity requestBodyEntity = null;
 		try {
 			// The payload definition using the Jackson library
@@ -235,13 +243,13 @@ public class JiraRestAPIService {
 				  .header("Accept", "application/json")
 				  .header("Content-Type", "application/json")
 				  .body(payload) ;
-			  //System.out.println(requestBodyEntity.asString().getBody());
+			  //logger.info(requestBodyEntity.asString().getBody());
 			  HttpResponse<JsonNode> response = requestBodyEntity
 					  							.asJson();
 
 			
-			/*System.out.println("Response is ");
-			System.out.println(response.getBody());*/
+			/*logger.info("Response is ");
+			logger.info(response.getBody());*/
 			JSONParser parser=new JSONParser(); 
 			 JSONObject temp = (JSONObject) parser.parse(response.getBody().toString());
              
@@ -256,21 +264,21 @@ public class JiraRestAPIService {
 
             }
              
-             System.out.println("Response is OK");
+             logger.info("Response is OK");
              i += Integer.parseInt(temp.get("maxResults").toString());
              totalissues = Integer.parseInt(temp.get("total").toString());
-             System.out.println("Index is "+i);
-             System.out.println("Total issues are "+totalissues);
-             System.out.println("maxResults are "+maxResults);
+             logger.info("Index is "+i);
+             logger.info("Total issues are "+totalissues);
+             logger.info("maxResults are "+maxResults);
              payload.put("startAt", i);
             }
 			 return resp;
 			
 		}
 		catch(UnirestException e) {
-			System.out.println("ERROR OCCURED");
+			logger.info("ERROR OCCURED UnirestException");
 			try {
-				System.out.println(requestBodyEntity.asString().getBody());
+				logger.info(requestBodyEntity.asString().getBody());
 			} catch (UnirestException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -279,9 +287,9 @@ public class JiraRestAPIService {
 			return resp;
 		}
 		catch(Exception e) {
-			System.out.println("ERROR OCCURED");
+			logger.info("ERROR OCCURED general Exception");
 			try {
-				System.out.println(requestBodyEntity.asString().getBody());
+				logger.info(requestBodyEntity.asString().getBody());
 			} catch (UnirestException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -291,115 +299,6 @@ public class JiraRestAPIService {
 		}
 		
 		}
-	
-	public static void testMethod1() {
-		// TODO Auto-generated method stub
-		try {
 
-			String uid="Testatlassian1@mailinator.com";
-
-			String pwd="JqrTd7Cz3zsIsxxelvTI193C";
-			String encoded = Base64.getEncoder().encodeToString((uid+":"+pwd).getBytes(StandardCharsets.UTF_8));
-			//String encoded = uid+":"+pwd;
-			URL url= new URL("https://demositetemporary.atlassian.net/rest/api/3/issue/FIRST-2");
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setRequestMethod("GET");
-			conn.setRequestProperty("Accept", "application/json");
-			conn.setRequestProperty("Authorization", "Basic "+encoded);
-			BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-			System.out.println("output is: ");
-			String output;
-			while((output = br.readLine()) != null) {
-				System.out.println(output);
-			}
-		} 
-		catch (MalformedURLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	public static void testMethod2() {
-		try {
-			// This code sample uses the  'Unirest' library:
-			// http://unirest.io/java.html
-			HttpResponse<JsonNode> response = Unirest.get("https://demositetemporary.atlassian.net/rest/api/3/search")
-			  .basicAuth("Testatlassian1@mailinator.com", "JqrTd7Cz3zsIsxxelvTI193C")
-			  .header("Accept", "application/json")
-			  .queryString("jql", "project = \"FIRST\"")
-			  .asJson();
-
-			System.out.println(response.getBody());
-		}
-		catch(Exception e) {
-			System.out.println("ERROR OCCURED");
-			e.printStackTrace();
-		}
-		}
-	public static void testMethod3() {
-		try {
-			// The payload definition using the Jackson library
-			JsonNodeFactory jnf = JsonNodeFactory.instance;
-			ObjectNode payload = jnf.objectNode();
-			{
-			  ArrayNode issueIds = payload.putArray("issueIds");
-			  issueIds.add(10999);
-			  issueIds.add(10001);
-			  //issueIds.add(1004);
-			  ArrayNode jqls = payload.putArray("jqls");
-			  jqls.add("project = \"FIRST\"");
-			  jqls.add("assignee IN (currentUser())");
-			  jqls.add("statusCategory in (\"To Do\", \"In Progress\") ORDER BY created DESC");
-			}
-
-			// Connect Jackson ObjectMapper to Unirest
-			Unirest.setObjectMapper(new ObjectMapper() {
-			   private com.fasterxml.jackson.databind.ObjectMapper jacksonObjectMapper
-			           = new com.fasterxml.jackson.databind.ObjectMapper();
-
-			   public <T> T readValue(String value, Class<T> valueType) {
-			       try {
-			           return jacksonObjectMapper.readValue(value, valueType);
-			       } catch (IOException e) {
-			           throw new RuntimeException(e);
-			       }
-			   }
-
-			   public String writeValue(Object value) {
-			       try {
-			           return jacksonObjectMapper.writeValueAsString(value);
-			       } catch (JsonProcessingException e) {
-			           throw new RuntimeException(e);
-			       }
-			   }
-			});
-
-			// This code sample uses the  'Unirest' library:
-			// http://unirest.io/java.html
-			HttpResponse<JsonNode> response = Unirest.post("https://demositetemporary.atlassian.net/rest/api/3/jql/match")
-					  .basicAuth("Testatlassian1@mailinator.com", "JqrTd7Cz3zsIsxxelvTI193C")
-			  .header("Accept", "application/json")
-			  .header("Content-Type", "application/json")
-			  .body(payload)
-			  .asJson();
-
-			
-
-			System.out.println(response.getBody().toString());
-		}
-		catch(Exception e) {
-			System.out.println("ERROR OCCURED");
-			e.printStackTrace();
-		}
-		}
 	
 }

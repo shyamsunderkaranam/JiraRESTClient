@@ -1,0 +1,107 @@
+<html>
+<head>
+<title>
+Environments Dashboard
+</title>
+<link rel="stylesheet" href="bootstrap.min.css">
+<link rel="stylesheet" href="_variables.scss">
+<link rel="stylesheet" href="_bootswatch.scss">
+<link rel="stylesheet" type="text/css" href="loading-bar.css"> 
+	<script src="angular.min.js" > </script>
+	<script src="app.js" > </script>
+	<script src= "ngClipboard.js"></script>
+	 <script src= "loading-bar.min.js"></script>
+<!-- https://bootswatch.com/morph/ -->
+
+</head>
+<body ng-app="ppsJiraProjectsClientApp" ng-controller="ppsJiraProjectsClientCtrl" ng-init="getProjectwiseData(0)">
+
+<div class="container">
+	<div class="row align-items-start">
+		<div class="col-3"> 
+			<img src="Kingfisher_logo.png" class="rounded float-left" style="width: 140px; height:100px;" />
+		</div>
+		<div class="col-9">
+			<h1 align=left>Environment Projects Dashboard</h1>
+		</div>
+		
+	</div>
+	<div ng-if="allOk">
+		<!-- <div class="list-group" align=center> -->
+		<div align=center>
+			<ul class="nav nav-pills" >
+			  <li class="nav-item"  ng-repeat="tab in tabs " >
+				<a  ng-class="tab.style" ng-click="getProjectwiseData($index)" href="#" ng-model="selectedTab"><h5><strong>{{tab.tab_name}}</strong></h5></a>
+			  </li>
+			  
+			</ul>
+		</div>
+			<!-- </div> -->
+		<br />
+	
+		<div class="row align-items-center">
+			<div class="col-5"> 
+				<div class="form-group">
+				  <input type="text" class="form-control" placeholder="Search Project" ng-model="projectSearch">
+				</div>
+			</div>
+			<div class="col-3"> 
+
+			</div>
+			<div class="col-2"> 
+				
+				<div class="form-check">
+				  
+				  <label class="form-check-label" for="flexCheckDefault">
+					<strong>Summary</strong>
+				  </label>
+				  <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault" ng-model="totalView" ng-click="totalView=!totalView">
+				</div>
+			</div>
+			<div class="col-2"> 
+				<button type="button" class="btn btn-outline-primary" ng-click="getProjectwiseData(0)">
+				<strong>Refresh</strong>
+				</button>
+			</div>
+		</div>
+		<br />
+		<div class="nav nav-pills">
+			<table class="table table-hover table-bordered">
+			  <thead>
+				<tr align=center>
+				<th>Project </th>
+				   <th scope="col" ng-repeat="st in columns " ng-if="!totalView" align=center >{{st.columnValue}}</th>
+				   <th> TOTAL </th>
+
+				</tr>
+			  </thead>
+			  <tbody>
+
+				<tr class="table-primary" ng-repeat="prj in finalResult | filter:projectSearch " >
+				  <th scope="row" ng-click="navToJira(prj.project_team,'total',prj.tab_area)"><a href="">{{prj.project_team  }}</a></th>
+				  <td ng-repeat="st in prj.columns" ng-if="!totalView" align=center>
+					<button type="button" class="btn btn-primary" ng-click="navToJira(prj.project_team,st.columnValue,prj.tab_area)">
+						<strong>{{st.count}}</strong>
+					</button>
+				  </td>
+
+				  <td> 
+					<button type="button" class="btn btn-primary" ng-click="navToJira(prj.project_team,'total',prj.tab_area)">
+						<strong>{{prj.total}}</strong>
+					</button>
+				  </td>
+				 </tr>
+			  </tbody>
+			</table>
+		</div>
+	</div>
+	<div ng-if="!allOk">
+		<br /><br /><br />
+		<h2> {{alt_text}} </h2>
+	
+	</div>
+	
+</div>
+
+</body>
+<html>
